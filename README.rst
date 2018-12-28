@@ -88,8 +88,8 @@ __ https://github.com/kenkundert/avendesora
 
 Configuration
 =============
-The configuration file is based on the TOML file format.  On Linux systems, it 
-can be found at::
+The configuration file is based on the `TOML file format 
+<https://github.com/toml-lang/toml>`_.  On Linux systems, it can be found at::
 
    ~/.config/sparekeys/config.toml
 
