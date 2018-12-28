@@ -109,12 +109,12 @@ would be replaced by meaningful values)::
    # plugin:
 
    [[archive.PLUGIN_4]]
-   OPTION = VALUE_3A
+   OPTION = VALUE_4A
 
    [[archive.PLUGIN_4]]
-   OPTION = VALUE_3B
+   OPTION = VALUE_4B
 
-   # Any plugin an be disabled like so:
+   # Any plugin can be disabled like so:
 
    [archive.PLUGIN_5]
    disable = true
