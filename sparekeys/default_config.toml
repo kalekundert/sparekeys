@@ -1,0 +1,2 @@
+[archive.file]
+src = ['~/.gnupg', '~/.ssh']

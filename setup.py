@@ -1,21 +1,14 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+from setuptools import setup
 
-import re
-with open('sparekeys/__init__.py') as file:
-    version_pattern = re.compile("__version__ = '(.*)'")
-    version = version_pattern.search(file.read()).group(1)
 with open('README.rst') as file:
     readme = file.read()
 
 setup(
     name='sparekeys',
-    version=version,
+    version='0.0.0',
     author='Kale Kundert',
     author_email='kale@thekunderts.net',
     long_description=readme,
@@ -26,7 +19,27 @@ setup(
         'console_scripts': [
             'sparekeys=sparekeys:main',
         ],
+        'sparekeys.auth': [
+            'getpass=sparekeys:auth_getpass',
+            'avendesora=sparekeys:auth_avendesora',
+        ],
+        'sparekeys.archive': [
+            'file=sparekeys:archive_file',
+            'emborg=sparekeys:archive_emborg',
+            'avendesora=sparekeys:archive_avendesora',
+        ],
+        'sparekeys.publish': [
+            'scp=sparekeys:publish_scp',
+            'mount=sparekeys:publish_mount',
+        ],
     },
     install_requires=[
+        'inform',
+        'shlib',
+        'setuptools',
+        'toml',
+        'appdirs',
+        'docopt',
+        'python-gnupg>=0.4.3',
     ],
 )
