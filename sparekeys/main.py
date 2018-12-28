@@ -299,7 +299,7 @@ def archive_file(config, archive):
 
         if dest is None:
             dest = archive
-        elif os.path.isabs(dest):
+        elif os.path.isabs(os.path.expanduser(dest)):
             raise PluginConfigError("'dest' paths cannot be absolute.", config, 'dest')
         else:
             dest = archive / dest
