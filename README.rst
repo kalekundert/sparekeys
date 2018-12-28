@@ -54,6 +54,38 @@ For more information::
 
    $ sparekeys -h
 
+Examples
+========
+Below are some example Spare Keys configuration files to help get you started.  
+See the Configuration_ and Plugins_ sections for more information on these 
+options.
+
+Copy SSH and GPG keys to a remote host via ``scp``::
+
+   [archive.file]
+   src = ['~/.gnupg', '~/.ssh']
+
+   [publish.scp]
+   host = 'alice@example.com'
+
+Copy SSH and GPG keys to a USB drive mounted at ``/mnt/usb``::
+   
+   [archive.file]
+   src = ['~/.gnupg', '~/.ssh']
+
+   [publish.mount]
+   drive = '/mnt/usb'
+
+Use your avendesora__ "login" credentials to encrypt the archive::
+
+   [archive.file]
+   src = ['~/.gnupg', '~/.ssh']
+
+   [auth.avendesora]
+   account = 'login'
+
+__ https://github.com/kenkundert/avendesora
+
 Configuration
 =============
 The configuration file is based on the TOML file format.  On Linux systems, it 
@@ -163,3 +195,4 @@ process.  For example, the following plugins are currently included:
 
 Although these plugins are currently distributed with Spare Keys itself, they 
 should be moved into the corresponding projects as soon as possible.
+
