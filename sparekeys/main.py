@@ -29,11 +29,12 @@ import toml, appdirs, docopt
 from collections import namedtuple
 from pkg_resources import iter_entry_points
 from inform import Inform as set_output_prefs, Error, display, comment, narrate, warn, error
-from shlib import cd, chmod, cp, ls, mkdir, mount, rm, Run as run, to_path
+from shlib import cd, chmod, cp, ls, mkdir, mount, rm, Run as run, to_path, set_prefs as set_shlib_prefs
 from arrow import now
 from gnupg import GPG
 
 def main():
+    set_shlib_prefs(use_inform=True, log_cmd=True)
     args = docopt.docopt(__doc__)
 
     if args['--verbose']:
@@ -71,7 +72,10 @@ def load_config():
         mkdir(config_dir)
         cp(defaults, config_path)
 
-    config = toml.load(config_path)
+    try:
+        config = toml.load(config_path)
+    except toml.decoder.TomlDecodeError as err:
+        raise Error(err, culprit=config_path)
 
     # Set default values for options that are accessed in multiple places: 
     config.setdefault('remote_dir', 'backup/sparekeys')
@@ -295,7 +299,7 @@ def archive_file(config, archive):
 
         if dest is None:
             dest = archive
-        elif os.path.isabs(dest):
+        elif os.path.isabs(os.path.expanduser(dest)):
             raise PluginConfigError("'dest' paths cannot be absolute.", config, 'dest')
         else:
             dest = archive / dest
