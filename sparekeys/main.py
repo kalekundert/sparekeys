@@ -17,7 +17,7 @@ Options:
         Output more information, include stack traces.
 """
 
-__version__ = '0.0.0'
+__version__ = '0.1.0'
 __author__ = "Ken & Kale Kundert"
 __slug__ = 'sparekeys'
 
