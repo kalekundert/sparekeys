@@ -15,6 +15,11 @@ setup(
     packages=[
         'sparekeys',
     ],
+    package_data = {
+        'sparekeys': [
+            'default_config.toml',
+        ],
+    },
     entry_points={
         'console_scripts': [
             'sparekeys=sparekeys:main',
