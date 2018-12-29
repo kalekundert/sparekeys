@@ -28,7 +28,7 @@ import toml, appdirs, docopt
 #from dataclasses import dataclass
 from collections import namedtuple
 from pkg_resources import iter_entry_points
-from inform import Inform as set_output_prefs, Error, display, comment, narrate, warn, error
+from inform import Inform as set_output_prefs, Error, display, comment, narrate, warn, error, get_informer, terminate
 from shlib import cd, chmod, cp, ls, mkdir, mount, rm, Run as run, to_path, set_prefs as set_shlib_prefs
 from arrow import now
 from gnupg import GPG
@@ -59,12 +59,15 @@ def main():
 
     except Error as err:
         if args['--verbose']: raise
-        else: error(err)
+        else: err.report()
+    terminate()
 
 
 def load_config():
     config_dir = to_path(appdirs.user_config_dir(__slug__))
     config_path = config_dir / 'config.toml'
+    inform = get_informer()
+    inform.set_logfile(config_dir / 'log')
 
     if not config_path.exists():
         display(f"'{config_path}' not found, installing defaults.")
@@ -346,6 +349,7 @@ def publish_mount(config, workspace):
     remote_dir = config['remote_dir']
 
     for drive in drives:
+        narrate(f"copyting archive to '{drive}'.")
         try:
             with mount(drive):
                 dest = to_path(drive, remote_dir)
