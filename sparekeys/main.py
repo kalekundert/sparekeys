@@ -416,6 +416,79 @@ def publish_mount(config, workspace):
         else:
             display(f"Archive copied to '{drive}'.")
 
+def publish_email(config, workspace):
+    """
+    Attach the archive in an email to yourself.
+    """
+    raise NotImplementedError
+
+    # https://realpython.com/python-send-email/#option-2-setting-up-a-local-smtp-server
+    import email, smtplib, ssl
+    from email import encoders
+    from email.mime.base import MIMEBase
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    params = dict(
+            now=now(),
+            user=getuser(),
+            host=gethostname(),
+    )
+
+    # Load all the necessary information from the config file.
+    sender = config.get('sender', '{user}@{host}').format(**params)
+    recipient = require(config, 'recipient').format(**params)
+    subject = config.get('subject', 'Spare Keys').format(**params)
+    body = config.get('body', '').format(**params)
+    smtp_host = require(config, 'smtp_host')
+    smtp_port = require(config, 'smtp_port')
+
+    # Create a multipart message and set headers
+    message = MIMEMultipart()
+    message["From"] = sender
+    message["To"] = recipient
+    message["Subject"] = subject
+
+    # Add body to the email.
+    message.attach(MIMEText(body, "plain"))
+
+    # Add attachments to the email.
+    attachments = [
+            'archive.tgz.gpg',
+            'decrypt.sh',
+    ]
+
+    for attachment in attachemnts:
+        path = workspace / attachment
+
+        # Open the attachment file in binary mode
+        with path.open('rb') as f:
+            # Add file as application/octet-stream
+            # Email clients can usually download this MIME-type automatically.
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(f.read())
+
+        # Encode file in ASCII characters to send by email    
+        encoders.encode_base64(part)
+
+        # Add header as key/value pair to attachment part
+        part.add_header(
+            "Content-Disposition",
+            f"attachment; filename={attachment}",
+        )
+
+        # Add attachment to message and convert message to string
+        message.attach(part)
+
+    text = message.as_string()
+
+    # Log in to server using secure context and send email
+    password = input("Type your email password and press enter:")
+
+    with smtplib.SMTP(smtp_host, smtp_port) as server:
+        server.sendmail(sender_email, receiver_email, text)
+
+
 def copy_to_archive(path, archive):
     src = to_path(path)
     dest = archive / src.relative_to(to_path('~'))
