@@ -24,8 +24,6 @@ __slug__ = 'sparekeys'
 import sys, os, inspect, shlex
 import toml, appdirs, docopt
 
-#from typing import Any
-#from dataclasses import dataclass
 from collections import namedtuple
 from pkg_resources import iter_entry_points
 from inform import Inform as set_output_prefs, Error, display, comment, narrate, warn, error, get_informer, terminate
@@ -325,12 +323,13 @@ def archive_emborg(config, archive):
     copy_to_archive('~/.config/borg', archive)
     copy_to_archive('~/.config/emborg', archive)
 
-    with Settings() as settings:
-        cmd = 'borg key export'.split() + [
-                settings.repository,
-                archive / '.config/borg.repokey',
-        ]
-        run_borg(cmd, settings)
+    with set_output_prefs(prog_name='emborg'):
+        with Settings() as settings:
+            cmd = 'borg key export'.split() + [
+                    settings.repository,
+                    archive / '.config/borg.repokey',
+            ]
+            run_borg(cmd, settings)
 
 def archive_avendesora(config, archive):
     copy_to_archive('~/.config/avendesora', archive)
