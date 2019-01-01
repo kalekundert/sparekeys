@@ -29,6 +29,8 @@ setup(
             'avendesora=sparekeys:auth_avendesora',
         ],
         'sparekeys.archive': [
+            'ssh=sparekeys:archive_ssh',
+            'gpg=sparekeys:archive_gpg',
             'file=sparekeys:archive_file',
             'emborg=sparekeys:archive_emborg',
             'avendesora=sparekeys:archive_avendesora',

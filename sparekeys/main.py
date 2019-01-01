@@ -13,23 +13,32 @@ Subcommands:
         List and briefly describe any installed plugins.
 
 Options:
+    -y --yes
+        Don't prompt for any information, and assume the answer to any 
+        question is yes.  This is necessary if running in the background.
+
     -v --verbose
         Output more information, include stack traces.
+
 """
 
 __version__ = '0.1.0'
 __author__ = "Ken & Kale Kundert"
 __slug__ = 'sparekeys'
 
-import sys, os, inspect, shlex
+import sys, os, shlex
 import toml, appdirs, docopt
+import pkg_resources
 
-#from typing import Any
-#from dataclasses import dataclass
 from collections import namedtuple
 from pkg_resources import iter_entry_points
-from inform import Inform as set_output_prefs, Error, display, comment, narrate, warn, error
+from inform import Inform as set_output_prefs, Error, display, comment, narrate, warn, error, plural
 from shlib import cd, chmod, cp, ls, mkdir, mount, rm, Run as run, to_path, set_prefs as set_shlib_prefs
+from textwrap import shorten
+from functools import lru_cache
+from shutil import get_terminal_size
+from getpass import getuser
+from socket import gethostname
 from arrow import now
 from gnupg import GPG
 
@@ -41,25 +50,29 @@ def main():
         set_output_prefs(verbose=True, narrate=True)
 
     try:
-        config = load_config()
-        if args['plugins']:
-            list_plugins(config)
-            sys.exit()
+        config_path, config = load_config()
+        try:
+            if args['plugins']:
+                list_plugins(config)
+                sys.exit()
 
-        # Get the passcode before building the archive, so if something goes 
-        # wrong with the passcode, we don't need to worry about cleaning up the 
-        # unencrypted archive.
-        passcode = query_passcode(config)
-        archive = build_archive(config)
-        encrypt_archive(config, archive, passcode)
-        publish_archive(config, archive)
+            # Get the passcode before building the archive, so if something 
+            # goes wrong with the passcode, we don't need to worry about 
+            # cleaning up the unencrypted archive.
+            passcode = query_passcode(config)
+            archive = build_archive(config, interactive=not args['--yes'])
+            encrypt_archive(config, archive, passcode)
+            publish_archive(config, archive)
+
+        except ConfigError as err:
+            err.reraise(culprit=config_path)
 
     except KeyboardInterrupt:
         print()
 
     except Error as err:
         if args['--verbose']: raise
-        else: error(err)
+        else: err.report()
 
 
 def load_config():
@@ -75,50 +88,71 @@ def load_config():
     try:
         config = toml.load(config_path)
     except toml.decoder.TomlDecodeError as err:
-        raise Error(err, culprit=config_path)
+        raise ConfigError(str(err), culprit=config_path)
 
     # Set default values for options that are accessed in multiple places: 
-    config.setdefault('remote_dir', 'backup/sparekeys')
-    config.setdefault('archive', {})
-    config.setdefault('publish', {})
-    config.setdefault('auth', {})
+    config.setdefault('plugins', {})
+    config['plugins'].setdefault('archive', [])
+    config['plugins'].setdefault('auth', [])
+    config['plugins'].setdefault('publish', [])
 
-    return config
+    return config_path, config
 
 def query_passcode(config):
     narrate("Getting a passcode for the archive")
 
-    plugins = load_auth_plugins(config)
+    # The authentication system is special in that if no plugins are specified, 
+    # the 'getpass' plugin will be used by default.
+    plugins = select_plugins(config, 'auth', ['getpass'])
 
+    # Try each authentication method until one works.
     for plugin in plugins:
-        subconfig = config['auth'].get(plugin.name, {})
+        subconfig = config.get('auth', {}).get(plugin.name, {})
 
         try:
-            disabled, passcode = eval_plugin(plugin, config, subconfig)
-        except PluginError as err:
-            display(f"'{plugin.name}' authentication failed: {err}")
-            continue
+            return eval_plugin(plugin, config, subconfig)
 
-        if not disabled:
-            return passcode
+        except SkipPlugin as err:
+            display(f"Skipping '{plugin.name}' authentication: {err}")
+            continue
 
     raise AllAuthFailed(plugins)
 
-def build_archive(config):
+def build_archive(config, interactive=True):
     narrate("Building the archive")
 
+    plugins = select_plugins(config, 'archive')
+    if not plugins:
+        raise ConfigError(f"'plugins.archive' not specified, nothing to do.")
+
     # Make the archive directory:
-    date = now().format(config.get('archive_name', 'YYYY-MM-DD'))
-    workspace = to_path(appdirs.user_data_dir(__slug__), date)
+    name = config.get('archive_name', '{host}').format(
+            user=getuser(),
+            host=gethostname(),
+            date=now(),
+    )
+    workspace = to_path(appdirs.user_data_dir(__slug__), name)
     archive = to_path(workspace / 'archive')
 
     rm(workspace)
     mkdir(archive)
 
     # Apply any 'archive' plugins:
-    for plugin in load_plugins('archive'):
-        subconfigs = config['archive'].get(plugin.name, [])
+    for plugin in plugins:
+        subconfigs = config.get('archive', {}).get(plugin.name, [])
         run_plugin(plugin, config, subconfigs, archive)
+
+    # Show the user which files were included in the archive.
+    display("The following files were included in the archive:")
+
+    for root, _, files in os.walk(archive):
+        root = to_path(root).relative_to(archive)
+        for file in files: 
+            display('   ', root / file)
+    display()
+
+    if interactive:
+        input("Is this correct? <Enter> to continue, <Ctrl-C> to cancel: ")
 
     return workspace
 
@@ -158,55 +192,93 @@ tar xvf archive.tgz
 
 def publish_archive(config, workspace):
     results = []
-    for plugin in load_plugins('publish'):
+
+    for plugin in select_plugins(config, 'publish'):
         subconfigs = config['publish'].get(plugin.name, [])
-        results += run_plugin(plugin, config, subconfigs, workspace)
+        results += run_plugin(
+                plugin, config, subconfigs, workspace,
+        )
 
     if not results:
         warn(f"No automated publishing rules found.\nMake copies of the archive yourself:\n{workspace}")
 
 def list_plugins(config):
-    print("auth:")
-    for plugin in load_auth_plugins(config):
-        print(' ', plugin.name)
+    # Work out the width of each column:
+    stages = 'archive', 'publish', 'auth'
+    defaults = {'auth': ['getpass']}
+    max_on = 2
+    max_type = max(
+            len(x)
+            for x in stages
+    )
+    max_name = max(
+            len(k)
+            for stage in stages
+            for k in load_plugins(stage)
+    )
+    max_width = get_terminal_size().columns - 1
+    max_desc = max_width - max_on - max_type - max_name - 3 * 2
 
-    print()
+    row = "{:%ds}  {:%ds}  {:%ds}  {:%ds}" % (max_on, max_type, max_name, max_desc)
+    header = row.format("On", "Stage", "Name", "Description")
+    rule = '─' * max_width
 
-    print("archive:")
-    for plugin in load_plugins('archive'):
-        print(' ', plugin.name)
+    display(rule)
+    display(header)
+    display(rule)
 
-    print()
+    for stage in stages:
+        installed = load_plugins(stage).values()
+        enabled = select_plugins(config, stage, defaults.get(stage))
+        plugins = enabled + [x for x in installed if x not in enabled]
 
-    print("publish:")
-    for plugin in load_plugins('publish'):
-        print(' ', plugin.name)
+        for i, plugin in enumerate(plugins):
+            summary = (plugin.__doc__ or "No summary").strip().split('\n')[0]
+            display(row.format(
+                '*' if plugin in enabled else '',
+                stage if i == 0 else '',
+                plugin.name,
+                shorten(summary, width=max_desc, placeholder='...'),
+            ))
+
+        display(rule)
 
 
-def load_plugins(group):
-    plugins = []
-    group = '.'.join([__slug__, group])
+@lru_cache()
+def load_plugins(stage):
+    plugins = {}
+    group = '.'.join([__slug__, stage])
 
+    # Load any plugins that are installed.
     for entry_point in iter_entry_points(group=group):
         plugin = entry_point.load()
         plugin.name = entry_point.name
         plugin.module = entry_point.module_name
-        plugin.lineno = inspect.getsourcelines(plugin)[1]
-        plugin.priority = getattr(plugin, 'priority', 0)
-        plugins.append(plugin)
-
-    plugins.sort(key=lambda x: x.lineno)
-    plugins.sort(key=lambda x: x.priority, reverse=True)
+        plugin.stage = stage
+        plugins[plugin.name] = plugin
 
     return plugins
 
-def load_auth_plugins(config):
-    plugins = load_plugins('auth')
-    plugins.sort(key=lambda x: config['auth'].get(x, {}).get('priority', 0))
-    return plugins
+def select_plugins(config, stage, defaults=None):
+    installed_plugins = load_plugins(stage)
+
+    # Return the plugins that have been enabled by the user for this stage.
+    selection = config.get('plugins', {}).get(stage) or defaults or []
+    if not isinstance(selection, list):
+        raise ConfigError(f"Expected 'plugins.{stage}' to be a list, not {selection.__class__.__name__}.")
+
+    unknown_plugins = set(selection) - set(installed_plugins)
+    if unknown_plugins:
+        raise ConfigError(f"The following '{stage}' {plural(unknown_plugins):plugin/ is/s are} not installed: {', '.join(unknown_plugins)}")
+
+    return [installed_plugins[x] for x in selection]
 
 def run_plugin(plugin, config, subconfigs, *args, **kwargs):
     results = []
+
+    # If multiple "subconfig" blocks are present for a plugin, the plugin will 
+    # be executed once for each such block.  If no blocks are present, the 
+    # plugin will be executed just once.
 
     if not isinstance(subconfigs, list):
         subconfigs = [subconfigs]
@@ -214,30 +286,21 @@ def run_plugin(plugin, config, subconfigs, *args, **kwargs):
         subconfigs = [{}]
 
     for subconfig in subconfigs:
-        disabled, result = eval_plugin(
-                plugin, config, subconfig, *args, **kwargs)
-        if not disabled:
+        try:
+            result = eval_plugin(plugin, config, subconfig, *args, **kwargs)
             results.append(result)
+
+        except SkipPlugin:
+            narrate(f"Skipping the '{plugin.stage}.{plugin.name}' plugin: {err}")
+            continue
 
     return results
 
 def eval_plugin(plugin, config, subconfig, *args, **kwargs):
-    if subconfig.get('disable', False):
-        narrate(f"Skipping the '{plugin.name}' plugin: disabled by user")
-        return PluginResult(True, None)
-    else:
-        narrate(f"Running the '{plugin.name}' plugin")
-
-    # Provide select global options to the plugin.
-    subconfig.setdefault('remote_dir', config['remote_dir'])
+    narrate(f"Running the '{plugin.stage}.{plugin.name}' plugin")
 
     try:
-        result = plugin(subconfig, *args, **kwargs)
-        return PluginResult(False, result)
-
-    except SkipPlugin as err:
-        narrate(f"Skipping the '{plugin.name}' plugin: {err}")
-        return PluginResult(True, None)
+        return plugin(subconfig, *args, **kwargs)
 
     except PluginError as err:
         err.plugin = plugin
@@ -245,6 +308,9 @@ def eval_plugin(plugin, config, subconfig, *args, **kwargs):
 
 
 def auth_getpass(config):
+    """
+    Prompt for a passcode the encrypt the archive with.
+    """
     from getpass import getpass
 
     try:
@@ -259,9 +325,12 @@ def auth_getpass(config):
 
     except EOFError:
         print()
-        raise PluginError("Received EOF")
+        raise SkipPlugin("Received EOF")
 
 def auth_avendesora(config):
+    """
+    Get a passcode to from avendesora.
+    """
     from avendesora import PasswordGenerator
 
     if 'account' not in config:
@@ -271,51 +340,32 @@ def auth_avendesora(config):
     account = avendesora.get_account(config['account'])
     return str(account.passcode)
 
+def archive_ssh(config, archive):
+    """
+    Copy `~/.ssh` into the archive.
+    """
+    copy_to_archive('~/.ssh', archive)
+
+def archive_gpg(config, archive):
+    """
+    Copy `~/.gnupg` into the archive.
+    """
+    dest = archive / '.gnupg'; mkdir(dest)
+    # Don't try to copy sockets (S.*); it won't work.
+    srcs = list(ls('~/.gnupg', reject='S.*'))
+    cp(srcs, dest)
+
 def archive_file(config, archive):
-    srcs = require_one_or_more(config, 'src')
-    dests = allow_zero_or_more(config, 'dest')
-    cmd = config.get('cmd', 'rsync -a --no-specials --no-devices {src} {dest}')
-    precmds = allow_zero_or_more(config, 'precmd')
-    postcmds = allow_zero_or_more(config, 'precmd')
-
-    # Make sure the 'src' and 'dest' options correspond.
-    if not dests:
-        dests = [None] * len(srcs)
-    if len(srcs) != len(dests):
-        raise PluginConfigError("Different number of entries for 'src' ({len(srcs)}) and 'dest' ({len(dests)}).", config, 'src', 'dest')
-
-    def subs_and_run(cmd, paths):
-        cmd = [x.format(**paths) for x in shlex.split(cmd)]
-        # Shell-mode disabled to eliminate the possibility of getting confused 
-        # by spaces/quotes/whatever in file names.
-        run(cmd, 's')
-
-    for src, dest in zip(srcs, dests):
-        # Resolve the source and destination paths.
-
-        # Use os.path because it preserves the trailing slash, which is 
-        # significant to rsync.
-        src = os.path.expanduser(src)
-
-        if dest is None:
-            dest = archive
-        elif os.path.isabs(os.path.expanduser(dest)):
-            raise PluginConfigError("'dest' paths cannot be absolute.", config, 'dest')
-        else:
-            dest = archive / dest
-
-        paths = dict(src=src, dest=dest)
-
-        # Run the commands to copy the file.
-        for precmd in precmds:
-            subs_and_run(precmd, paths)
-
-        subs_and_run(cmd, paths)
-
-        for postcmd in postcmds:
-            subs_and_run(postcmd, paths)
+    """
+    Copy arbitrary files into the archive.
+    """
+    for src in require_one_or_more(config, 'src'):
+        copy_to_archive(src, archive)
 
 def archive_emborg(config, archive):
+    """
+    Copy `~/.config/borg` and `~/.config/emborg` into the archive.
+    """
     from emborg.command import run_borg
     from emborg.settings import Settings
 
@@ -330,11 +380,18 @@ def archive_emborg(config, archive):
         run_borg(cmd, settings)
 
 def archive_avendesora(config, archive):
+    """
+    Copy `~/.config/avendesora` into the archive.
+    """
+
     copy_to_archive('~/.config/avendesora', archive)
 
 def publish_scp(config, workspace):
+    """
+    Copy the archive to one or more remote hosts via `scp`.
+    """
     hosts = require_one_or_more(config, 'host')
-    remote_dir = config['remote_dir']
+    remote_dir = config.get('remote_dir', 'backup/sparekeys')
 
     for host in hosts:
         run(['ssh', host, f'mkdir -p {remote_dir}'])
@@ -342,14 +399,17 @@ def publish_scp(config, workspace):
         display(f"Archive copied to '{host}'.")
 
 def publish_mount(config, workspace):
+    """
+    Copy the archive to one or more mounted/mountable drives.
+    """
     drives = require_one_or_more(config, 'drive')
-    remote_dir = config['remote_dir']
+    remote_dir = config.get('remote_dir', 'backup/sparekeys')
 
     for drive in drives:
         try:
             with mount(drive):
                 dest = to_path(drive, remote_dir)
-                mkdir(dest); rm(dest)
+                rm(dest); mkdir(dest)
                 cp(workspace, dest)
         except Error:
             error(f"'{drive}' not mounted, skipping.")
@@ -362,9 +422,10 @@ def copy_to_archive(path, archive):
     mkdir(dest.parent)
     cp(src, dest)
 
-def allow_zero_or_more(config, key):
-    values = config.get(key, [])
-    return values if isinstance(values, list) else [values]
+def require(config, key):
+    try: value = config[key]
+    except KeyError:
+        raise SkipPlugin(f"No '{key}' specified.")
 
 def require_one_or_more(config, key):
     values = allow_zero_or_more(config, key)
@@ -374,14 +435,20 @@ def require_one_or_more(config, key):
 
     return values
 
-auth_avendesora.priority = 10
+def allow_zero_or_more(config, key):
+    values = config.get(key, [])
+    return values if isinstance(values, list) else [values]
 
-PluginResult = namedtuple("PluginResult", "disabled result")
+
+class ConfigError(Error):
+    pass
+
 
 class PluginError(Error):
     pass
 
-class PluginConfigError(PluginError):
+class PluginConfigError(PluginError, ConfigError):
+    # Is it safe to do diamond inheritance with Error?  Not totally sure...
 
     def __init__(self, message, config, *keys):
         super().__init__(message, config, *keys)
