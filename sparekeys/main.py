@@ -404,10 +404,7 @@ def publish_scp(config, workspace):
     hosts = require_one_or_more(config, 'host')
     remote_dir = config.get('remote_dir', 'backup/sparekeys')
     remote_dir = remote_dir.format(**PARAMS)
-    if get_informer().quiet:
-        run_flags = 'sOEW'
-    else:
-        run_flags = 'soEW'
+    run_flags = 'sOEW' if get_informer().quiet else 'soEW'
 
     for host in hosts:
         try:
