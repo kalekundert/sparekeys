@@ -1,2 +1,5 @@
-[archive.file]
-src = ['~/.gnupg', '~/.ssh']
+[plugins]
+archive = [
+    'ssh',
+    'gpg',
+],
