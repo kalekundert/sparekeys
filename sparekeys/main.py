@@ -20,6 +20,8 @@ Options:
     -v --verbose
         Output more information, include stack traces.
 
+    -q --quiet
+        Eliminate any unnecessary output (implies --yes).
 """
 
 __version__ = '0.1.0'
@@ -32,7 +34,7 @@ import pkg_resources
 
 from collections import namedtuple
 from pkg_resources import iter_entry_points
-from inform import Inform as set_output_prefs, Error, display, comment, narrate, warn, error, plural
+from inform import Inform as set_output_prefs, Error, display, output, narrate, warn, error, plural, get_informer, terminate
 from shlib import cd, chmod, cp, ls, mkdir, mount, rm, Run as run, to_path, set_prefs as set_shlib_prefs
 from textwrap import shorten
 from functools import lru_cache
@@ -42,12 +44,20 @@ from socket import gethostname
 from arrow import now
 from gnupg import GPG
 
+PARAMS = dict(
+    date = now(),
+    user = getuser(),
+    host = gethostname(),
+)
+
 def main():
     set_shlib_prefs(use_inform=True, log_cmd=True)
     args = docopt.docopt(__doc__)
 
     if args['--verbose']:
         set_output_prefs(verbose=True, narrate=True)
+    elif args['--quiet']:
+        set_output_prefs(quiet=True)
 
     try:
         config_path, config = load_config()
@@ -60,7 +70,8 @@ def main():
             # goes wrong with the passcode, we don't need to worry about 
             # cleaning up the unencrypted archive.
             passcode = query_passcode(config)
-            archive = build_archive(config, interactive=not args['--yes'])
+            batch = args['--yes'] or args['--quiet']
+            archive = build_archive(config, not batch)
             encrypt_archive(config, archive, passcode)
             publish_archive(config, archive)
 
@@ -73,11 +84,14 @@ def main():
     except Error as err:
         if args['--verbose']: raise
         else: err.report()
+    terminate()
 
 
 def load_config():
     config_dir = to_path(appdirs.user_config_dir(__slug__))
     config_path = config_dir / 'config.toml'
+    inform = get_informer()
+    inform.set_logfile(config_dir / 'log')
 
     if not config_path.exists():
         display(f"'{config_path}' not found, installing defaults.")
@@ -126,11 +140,7 @@ def build_archive(config, interactive=True):
         raise ConfigError(f"'plugins.archive' not specified, nothing to do.")
 
     # Make the archive directory:
-    name = config.get('archive_name', '{host}').format(
-            user=getuser(),
-            host=gethostname(),
-            date=now(),
-    )
+    name = config.get('archive_name', '{host}').format(**PARAMS)
     workspace = to_path(appdirs.user_data_dir(__slug__), name)
     archive = to_path(workspace / 'archive')
 
@@ -160,7 +170,7 @@ def encrypt_archive(config, workspace, passcode):
     narrate("Encrypting the archive")
 
     with cd(workspace):
-        run('tar -cf archive.tgz archive', 'soeW')
+        run('tar -cf archive.tgz archive', 'soEW')
         with open('archive.tgz', 'rb') as f:
             cleartext = f.read()
 
@@ -188,7 +198,7 @@ gpg -d -o archive.tgz archive.tgz.gpg
 tar xvf archive.tgz
 ''')
     chmod(0o700, script, workspace / 'archive.tgz.gpg')
-    display(f"Archive '{workspace.name}' created.")
+    narrate(f"Local archive '{workspace.name}' created.")
 
 def publish_archive(config, workspace):
     results = []
@@ -223,9 +233,9 @@ def list_plugins(config):
     header = row.format("On", "Stage", "Name", "Description")
     rule = '─' * max_width
 
-    display(rule)
-    display(header)
-    display(rule)
+    output(rule)
+    output(header)
+    output(rule)
 
     for stage in stages:
         installed = load_plugins(stage).values()
@@ -234,14 +244,14 @@ def list_plugins(config):
 
         for i, plugin in enumerate(plugins):
             summary = (plugin.__doc__ or "No summary").strip().split('\n')[0]
-            display(row.format(
+            output(row.format(
                 '*' if plugin in enabled else '',
                 stage if i == 0 else '',
                 plugin.name,
                 shorten(summary, width=max_desc, placeholder='...'),
             ))
 
-        display(rule)
+        output(rule)
 
 
 @lru_cache()
@@ -291,7 +301,7 @@ def run_plugin(plugin, config, subconfigs, *args, **kwargs):
             results.append(result)
 
         except SkipPlugin:
-            narrate(f"Skipping the '{plugin.stage}.{plugin.name}' plugin: {err}")
+            display(f"Skipping the '{plugin.stage}.{plugin.name}' plugin: {err}")
             continue
 
     return results
@@ -372,12 +382,13 @@ def archive_emborg(config, archive):
     copy_to_archive('~/.config/borg', archive)
     copy_to_archive('~/.config/emborg', archive)
 
-    with Settings() as settings:
-        cmd = 'borg key export'.split() + [
-                settings.repository,
-                archive / '.config/borg.repokey',
-        ]
-        run_borg(cmd, settings)
+    with set_output_prefs(prog_name='emborg'):
+        with Settings() as settings:
+            cmd = 'borg key export'.split() + [
+                    settings.repository,
+                    archive / '.config/borg.repokey',
+            ]
+            run_borg(cmd, settings)
 
 def archive_avendesora(config, archive):
     """
@@ -392,10 +403,15 @@ def publish_scp(config, workspace):
     """
     hosts = require_one_or_more(config, 'host')
     remote_dir = config.get('remote_dir', 'backup/sparekeys')
+    remote_dir = remote_dir.format(**PARAMS)
+    run_flags = 'sOEW' if get_informer().quiet else 'soEW'
 
     for host in hosts:
-        run(['ssh', host, f'mkdir -p {remote_dir}'])
-        run(['scp', '-r', workspace, f'{host}:{remote_dir}'])
+        try:
+            run(['ssh', host, f'mkdir -p {remote_dir}'], run_flags)
+            run(['scp', '-r', workspace, f'{host}:{remote_dir}'], run_flags)
+        except Error as err:
+            err.reraise(codicil=err.cmd)
         display(f"Archive copied to '{host}'.")
 
 def publish_mount(config, workspace):
@@ -404,8 +420,10 @@ def publish_mount(config, workspace):
     """
     drives = require_one_or_more(config, 'drive')
     remote_dir = config.get('remote_dir', 'backup/sparekeys')
+    remote_dir = remote_dir.format(**PARAMS)
 
     for drive in drives:
+        narrate(f"copying archive to '{drive}'.")
         try:
             with mount(drive):
                 dest = to_path(drive, remote_dir)
@@ -429,17 +447,11 @@ def publish_email(config, workspace):
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
 
-    params = dict(
-            now=now(),
-            user=getuser(),
-            host=gethostname(),
-    )
-
     # Load all the necessary information from the config file.
-    sender = config.get('sender', '{user}@{host}').format(**params)
-    recipient = require(config, 'recipient').format(**params)
-    subject = config.get('subject', 'Spare Keys').format(**params)
-    body = config.get('body', '').format(**params)
+    sender = config.get('sender', '{user}@{host}').format(**PARAMS)
+    recipient = require(config, 'recipient').format(**PARAMS)
+    subject = config.get('subject', 'Spare Keys').format(**PARAMS)
+    body = config.get('body', '').format(**PARAMS)
     smtp_host = require(config, 'smtp_host')
     smtp_port = require(config, 'smtp_port')
 
