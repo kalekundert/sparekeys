@@ -33,6 +33,7 @@ setup(
             'gpg=sparekeys:archive_gpg',
             'file=sparekeys:archive_file',
             'emborg=sparekeys:archive_emborg',
+                # wants emborg=>1.1, but that version is not available yet.
             'avendesora=sparekeys:archive_avendesora',
         ],
         'sparekeys.publish': [

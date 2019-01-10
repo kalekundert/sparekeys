@@ -376,19 +376,18 @@ def archive_emborg(config, archive):
     """
     Copy `~/.config/borg` and `~/.config/emborg` into the archive.
     """
-    from emborg.command import run_borg
-    from emborg.settings import Settings
+    from emborg import Emborg
 
     copy_to_archive('~/.config/borg', archive)
     copy_to_archive('~/.config/emborg', archive)
 
     with set_output_prefs(prog_name='emborg'):
-        with Settings() as settings:
+        with Emborg() as emborg:
             cmd = 'borg key export'.split() + [
-                    settings.repository,
+                    emborg.repository,
                     archive / '.config/borg.repokey',
             ]
-            run_borg(cmd, settings)
+            emborg.run_borg(cmd)
 
 def archive_avendesora(config, archive):
     """
