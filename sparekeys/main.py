@@ -383,11 +383,10 @@ def archive_emborg(config, archive):
 
     with set_output_prefs(prog_name='emborg'):
         with Emborg() as emborg:
-            cmd = 'borg key export'.split() + [
-                    emborg.repository,
-                    archive / '.config/borg.repokey',
-            ]
-            emborg.run_borg(cmd)
+            emborg.run_borg(
+                cmd = 'key export',
+                args = [emborg.destination(), archive / '.config/borg.repokey']
+            )
 
 def archive_avendesora(config, archive):
     """
