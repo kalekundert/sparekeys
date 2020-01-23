@@ -34,8 +34,14 @@ import pkg_resources
 
 from collections import namedtuple
 from pkg_resources import iter_entry_points
-from inform import Inform as set_output_prefs, Error, display, output, narrate, warn, error, plural, get_informer, terminate
-from shlib import cd, chmod, cp, ls, mkdir, mount, rm, Run as run, to_path, set_prefs as set_shlib_prefs
+from inform import (
+    Inform as set_output_prefs, Error, display, output, narrate, warn, error,
+    fatal, plural, get_informer, terminate, os_error
+)
+from shlib import (
+    cd, chmod, cp, ls, mkdir, mount, rm, Run as run, to_path, set_prefs as
+    set_shlib_prefs
+)
 from textwrap import shorten
 from functools import lru_cache
 from shutil import get_terminal_size
@@ -75,15 +81,17 @@ def main():
             encrypt_archive(config, archive, passcode)
             publish_archive(config, archive)
 
-        except ConfigError as err:
-            err.reraise(culprit=config_path)
+        except ConfigError as e:
+            e.reraise(culprit=config_path)
 
     except KeyboardInterrupt:
         print()
 
-    except Error as err:
+    except Error as e:
         if args['--verbose']: raise
-        else: err.report()
+        else: e.report()
+    except OSError as e:
+        fatal(os_error(e))
     terminate()
 
 
@@ -101,8 +109,8 @@ def load_config():
 
     try:
         config = toml.load(config_path)
-    except toml.decoder.TomlDecodeError as err:
-        raise ConfigError(str(err), culprit=config_path)
+    except toml.decoder.TomlDecodeError as e:
+        raise ConfigError(str(e), culprit=config_path)
 
     # Set default values for options that are accessed in multiple places: 
     config.setdefault('plugins', {})
@@ -126,8 +134,8 @@ def query_passcode(config):
         try:
             return eval_plugin(plugin, config, subconfig)
 
-        except SkipPlugin as err:
-            display(f"Skipping '{plugin.name}' authentication: {err}")
+        except SkipPlugin as e:
+            display(f"Skipping '{plugin.name}' authentication: {e}")
             continue
 
     raise AllAuthFailed(plugins)
@@ -301,7 +309,7 @@ def run_plugin(plugin, config, subconfigs, *args, **kwargs):
             results.append(result)
 
         except SkipPlugin:
-            display(f"Skipping the '{plugin.stage}.{plugin.name}' plugin: {err}")
+            display(f"Skipping the '{plugin.stage}.{plugin.name}' plugin: {e}")
             continue
 
     return results
@@ -312,8 +320,8 @@ def eval_plugin(plugin, config, subconfig, *args, **kwargs):
     try:
         return plugin(subconfig, *args, **kwargs)
 
-    except PluginError as err:
-        err.plugin = plugin
+    except PluginError as e:
+        e.plugin = plugin
         raise
 
 
@@ -348,7 +356,11 @@ def auth_avendesora(config):
 
     avendesora = PasswordGenerator()
     account = avendesora.get_account(config['account'])
-    return str(account.passcode)
+    fieldname = config.get('field')
+    if fieldname:
+        return str(account.get_value(fieldname))
+    else:
+        return str(account.get_passcode())
 
 def archive_ssh(config, archive):
     """
@@ -382,7 +394,7 @@ def archive_emborg(config, archive):
     copy_to_archive('~/.config/emborg', archive)
 
     with set_output_prefs(prog_name='emborg'):
-        with Emborg() as emborg:
+        with Emborg(name=config.get('config')) as emborg:
             emborg.run_borg(
                 cmd = 'key export',
                 args = [emborg.destination(), archive / '.config/borg.repokey']
@@ -408,8 +420,8 @@ def publish_scp(config, workspace):
         try:
             run(['ssh', host, f'mkdir -p {remote_dir}'], run_flags)
             run(['scp', '-r', workspace, f'{host}:{remote_dir}'], run_flags)
-        except Error as err:
-            err.reraise(codicil=err.cmd)
+        except Error as e:
+            e.reraise(codicil=e.cmd)
         display(f"Archive copied to '{host}'.")
 
 def publish_mount(config, workspace):
