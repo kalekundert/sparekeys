@@ -8,7 +8,7 @@ with open('README.rst') as file:
 
 setup(
     name='sparekeys',
-    version='0.1.0',
+    version='0.1.1',
     author='Kale Kundert',
     author_email='kale@thekunderts.net',
     long_description=readme,
