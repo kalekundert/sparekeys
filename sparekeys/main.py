@@ -35,8 +35,9 @@ import pkg_resources
 from collections import namedtuple
 from pkg_resources import iter_entry_points
 from inform import (
-    Inform as set_output_prefs, Error, display, output, narrate, warn, error,
-    fatal, plural, get_informer, terminate, os_error
+    display, error, Error, fatal, full_stop, get_informer,
+    Inform as set_output_prefs, narrate, os_error, output, plural, terminate,
+    warn,
 )
 from shlib import (
     cd, chmod, cp, ls, mkdir, mount, rm, Run as run, to_path, set_prefs as
@@ -439,8 +440,8 @@ def publish_mount(config, workspace):
                 dest = to_path(drive, remote_dir)
                 rm(dest); mkdir(dest)
                 cp(workspace, dest)
-        except Error:
-            error(f"'{drive}' not mounted, skipping.")
+        except OSError as e:
+            error(full_stop(e), f"Skipping.", culprit=drive)
         else:
             display(f"Archive copied to '{drive}'.")
 
