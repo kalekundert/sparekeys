@@ -84,6 +84,8 @@ def main():
 
         except ConfigError as e:
             e.reraise(culprit=config_path)
+        finally:
+            delete_archive(config, archive)
 
     except KeyboardInterrupt:
         print()
@@ -220,6 +222,9 @@ def publish_archive(config, workspace):
 
     if not results:
         warn(f"No automated publishing rules found.\nMake copies of the archive yourself:\n{workspace}")
+
+def delete_archive(config, workspace):
+    rm(workspace)
 
 def list_plugins(config):
     # Work out the width of each column:
