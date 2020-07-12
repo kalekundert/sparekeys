@@ -445,8 +445,10 @@ def publish_mount(config, workspace):
                 dest = to_path(drive, remote_dir)
                 rm(dest); mkdir(dest)
                 cp(workspace, dest)
-        except (Error, OSError) as e:
-            error(full_stop(e), f"Skipping.", culprit=drive)
+        except Error as e:
+            error(f"unable to mount, skipping.", culprit=drive)
+        except OSError as e:
+            error(os_error(e), f"Skipping.")
         else:
             display(f"Archive copied to '{drive}'.")
 
