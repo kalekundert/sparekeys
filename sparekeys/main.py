@@ -447,8 +447,6 @@ def publish_mount(config, workspace):
                 cp(workspace, dest)
         except Error as e:
             error(f"unable to mount, skipping.", culprit=drive)
-        except OSError as e:
-            error(os_error(e), f"Skipping.")
         else:
             display(f"Archive copied to '{drive}'.")
 
