@@ -44,13 +44,20 @@ from socket import gethostname
 from arrow import now
 from gnupg import GPG
 
-PARAMS = dict(
-    date = now(),
-    user = getuser(),
-    host = gethostname(),
-)
+PARAMS = {
+    'date': now(),
+    'user': getuser(),
+    'host': gethostname(),
+}
 
 def main():
+    """
+    Construct, encrypt, and publish backup keys.  
+
+    As the primary entry point for the end user, this function is also 
+    responsible for integrating information from command-line arguments, 
+    configuration files, and `setuptools` plugins.
+    """
     set_shlib_prefs(use_inform=True, log_cmd=True)
     args = docopt.docopt(__doc__)
 
@@ -84,6 +91,7 @@ def main():
     except Error as err:
         if args['--verbose']: raise
         else: err.report()
+
     terminate()
 
 
@@ -524,10 +532,8 @@ def allow_zero_or_more(config, key):
     values = config.get(key, [])
     return values if isinstance(values, list) else [values]
 
-
 class ConfigError(Error):
     pass
-
 
 class PluginError(Error):
     pass
