@@ -8,7 +8,7 @@ with open('README.rst') as file:
 
 setup(
     name='sparekeys',
-    version='0.1.1',
+    version='0.1.4',
     author='Kale Kundert',
     author_email='kale@thekunderts.net',
     long_description=readme,
@@ -49,5 +49,16 @@ setup(
         'appdirs',
         'docopt',
         'python-gnupg>=0.4.3',
+    ],
+    python_requires = '>=3.6',
+    classifiers = [
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+        'Natural Language :: English',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Topic :: Utilities',
     ],
 )

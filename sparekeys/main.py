@@ -24,7 +24,7 @@ Options:
         Eliminate any unnecessary output (implies --yes).
 """
 
-__version__ = '0.1.1'
+__version__ = '0.1.4'
 __author__ = "Ken & Kale Kundert"
 __slug__ = 'sparekeys'
 
@@ -35,8 +35,9 @@ import pkg_resources
 from collections import namedtuple
 from pkg_resources import iter_entry_points
 from inform import (
-    Inform as set_output_prefs, Error, display, output, narrate, warn, error,
-    fatal, plural, get_informer, terminate, os_error
+    display, error, Error, fatal, full_stop, get_informer,
+    Inform as set_output_prefs, narrate, os_error, output, plural, terminate,
+    warn,
 )
 from shlib import (
     cd, chmod, cp, ls, mkdir, mount, rm, Run as run, to_path, set_prefs as
@@ -83,6 +84,8 @@ def main():
 
         except ConfigError as e:
             e.reraise(culprit=config_path)
+        finally:
+            delete_archive(config, archive)
 
     except KeyboardInterrupt:
         print()
@@ -219,6 +222,9 @@ def publish_archive(config, workspace):
 
     if not results:
         warn(f"No automated publishing rules found.\nMake copies of the archive yourself:\n{workspace}")
+
+def delete_archive(config, workspace):
+    rm(workspace)
 
 def list_plugins(config):
     # Work out the width of each column:
@@ -439,8 +445,8 @@ def publish_mount(config, workspace):
                 dest = to_path(drive, remote_dir)
                 rm(dest); mkdir(dest)
                 cp(workspace, dest)
-        except Error:
-            error(f"'{drive}' not mounted, skipping.")
+        except Error as e:
+            error(f"unable to mount, skipping.", culprit=drive)
         else:
             display(f"Archive copied to '{drive}'.")
 
