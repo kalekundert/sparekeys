@@ -8,7 +8,7 @@ with open('README.rst') as file:
 
 setup(
     name='sparekeys',
-    version='0.1.0',
+    version='0.1.4',
     author='Kale Kundert',
     author_email='kale@thekunderts.net',
     long_description=readme,
@@ -33,6 +33,7 @@ setup(
             'gpg=sparekeys:archive_gpg',
             'file=sparekeys:archive_file',
             'emborg=sparekeys:archive_emborg',
+                # needs emborg version 1.2 or greater
             'avendesora=sparekeys:archive_avendesora',
         ],
         'sparekeys.publish': [
@@ -41,12 +42,23 @@ setup(
         ],
     },
     install_requires=[
-        'inform',
-        'shlib',
+        'inform>-1.14',
+        'shlib>=1.0',
         'setuptools',
         'toml',
         'appdirs',
         'docopt',
         'python-gnupg>=0.4.3',
+    ],
+    python_requires = '>=3.6',
+    classifiers = [
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+        'Natural Language :: English',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Topic :: Utilities',
     ],
 )
