@@ -43,7 +43,6 @@ Spare Keys can be installed from PyPI::
 
 Note that Spare Keys requires python≥3.6.
 
-
 Usage
 =====
 To get started, simply run the following command::
@@ -57,7 +56,6 @@ to the encrypted archive will be shown so that you can copy it yourself.
 For more information::
 
    $ sparekeys -h
-
 
 Examples
 ========
@@ -83,7 +81,7 @@ Copy SSH and GPG keys to a USB drive mounted at ``/mnt/usb``::
    [publish.mount]
    drive = '/mnt/usb'
 
-Archive SSH keys, GPG keys, and a cryptocurrency wallet:
+Archive SSH keys, GPG keys, and a cryptocurrency wallet::
 
    [plugins]
    archive = ['ssh', 'gpg', 'file']
@@ -93,7 +91,7 @@ Archive SSH keys, GPG keys, and a cryptocurrency wallet:
    [archive.file]
    src = '~/.config/cryptocurrency'
 
-Use your avendesora__ "login" credentials to encrypt the archive.  As a
+Use your avendesora_ "login" credentials to encrypt the archive.  As a
 fallback, prompt for a password (getpass)::
 
    [plugins]
@@ -103,13 +101,10 @@ fallback, prompt for a password (getpass)::
    [auth.avendesora]
    account = 'login'
 
-__ https://github.com/kenkundert/avendesora
-
-
 Configuration
 =============
 The configuration file is based on the `TOML file format
-<https://github.com/toml-lang/toml>`_.  On Linux systems, it can be found at::
+<https://github.com/toml-lang/toml>`__.  On Linux systems, it can be found at::
 
    ~/.config/sparekeys/config.toml
 
@@ -138,7 +133,7 @@ configure any plugins that require extra information::
    drive = '/mnt/usb'
 
 You can get a list of installed plugins by running ``sparekeys plugins``.  More
-information on the built-in plugins is available in the `Plugins`_ section
+information on the built-in plugins is available in the Plugins_ section
 below.  The `Plugin API`_ section described how you can make your own plugins.
 
 The ``[plugins]`` block:
@@ -196,7 +191,7 @@ remote hosts::
    - ``{host}``: The name of the current machine.
    - ``{date:YYYYMMDD}``: The current date.  The characters after the colon
      specify how the date should be `formatted
-     <https://arrow.readthedocs.io/en/latest/#format>`.
+     <https://arrow.readthedocs.io/en/latest/#format>`__.
 
 Plugins
 =======
@@ -219,18 +214,17 @@ process.  Below are descriptions of all the built-in plugins:
      relative to the home directory.
 
 ``archive.emborg``
-   Copy files for `borg backup <https://www.borgbackup.org/>` and its `emborg
-   front-end <https://github.com/KenKundert/emborg>` into the archive.  These
+   Copy files for `borg backup <https://www.borgbackup.org/>`__ and its `emborg
+   front-end <https://github.com/KenKundert/emborg>`__ into the archive.  These
    files include the keys and configuration options necessary to recover your
-   backups.  The `borg key export` command is run to download keys for
+   backups.  The ``borg key export`` command is run to download keys for
    'repokey' backups, protecting against corruption in the backup archive.
 
    - ``config`` (str): Name of emborg configuration to use. If not given the 
      default configuration is used.
 
 ``archive.avendesora``
-   Copy configuration files for the `avendesora
-   <https://github.com/kenkundert/avendesora>` password manager into the
+   Copy configuration files for the avendesora_ password manager into the
    archive.
 
    No configuration options.
@@ -267,8 +261,7 @@ process.  Below are descriptions of all the built-in plugins:
    plugins are enabled.
 
 ``auth.avendesora``
-   Get a passcode for the archive from avendesora__.
-   __ https://github.com/kenkundert/avendesora
+   Get a passcode for the archive from avendesora_.
 
    - ``account`` (str): The name of the account to get the passcode for.  It's
      recommended to use a password you have completely memorized (e.g. a login
@@ -278,11 +271,10 @@ process.  Below are descriptions of all the built-in plugins:
      or pass phrase. If not given, avendesora chooses a likely candidate for 
      you.
 
-
 Plugin API
 ==========
 Plugins can be installed using the `setuptools Entry Points API
-<https://amir.rachum.com/blog/2017/07/28/python-entry-points/>`::
+<https://amir.rachum.com/blog/2017/07/28/python-entry-points/>`__::
 
    setup(
       ...
@@ -358,3 +350,5 @@ Plugins can raise the following exceptions:
 
 - ``PluginError``: Something else went wrong.  The program will be aborted
   immediately and an informative error will be displayed..
+
+.. _avendesora: https://github.com/kenkundert/avendesora
