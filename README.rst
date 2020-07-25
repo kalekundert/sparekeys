@@ -1,7 +1,6 @@
 **********
 Spare Keys
 **********
-
 Spare Keys makes and distributes encrypted copies of the files that you would
 need to recover from a catastrophic hard drive failure, e.g. SSH keys, GPG
 keys, password vaults, etc.  The basic process goes like this:
@@ -27,8 +26,11 @@ keys, password vaults, etc.  The basic process goes like this:
 .. image:: https://img.shields.io/pypi/pyversions/sparekeys.svg
    :target: https://pypi.python.org/pypi/sparekeys
 
-.. image:: https://img.shields.io/travis/kalekundert/sparekeys.svg
-   :target: https://travis-ci.org/kalekundert/sparekeys
+.. image:: https://img.shields.io/readthedocs/sparekeys.svg
+   :target: https://sparekeys.readthedocs.io/en/latest/?badge=latest
+
+.. image:: https://img.shields.io/github/workflow/status/kalekundert/sparekeys/Test%20and%20release/master
+   :target: https://github.com/kalekundert/sparekeys/actions
 
 .. image:: https://img.shields.io/coveralls/kalekundert/sparekeys.svg
    :target: https://coveralls.io/github/kalekundert/sparekeys?branch=master
@@ -44,7 +46,6 @@ Note that Spare Keys requires python≥3.6.
 
 Usage
 =====
-
 To get started, simply run the following command::
 
    $ sparekeys
@@ -60,7 +61,6 @@ For more information::
 
 Examples
 ========
-
 Below are some example Spare Keys configuration files to help get you started.
 See the Configuration_ and Plugins_ sections for more information on these
 options.
@@ -108,7 +108,6 @@ __ https://github.com/kenkundert/avendesora
 
 Configuration
 =============
-
 The configuration file is based on the `TOML file format
 <https://github.com/toml-lang/toml>`_.  On Linux systems, it can be found at::
 
@@ -157,7 +156,6 @@ The ``[plugins]`` block:
   asks for a passcode in the terminal) will be used.  If no passcode can be
   obtained, the archive will not be created.
 
-
 **The configuration blocks:**
 
 The remaining blocks provide configuration options specific to individual
@@ -187,7 +185,6 @@ remote hosts::
    [[publish.scp]]
    host = 'alice@work.com'
    remote_dir = '/backups/alice/'
-
 
 **Top-level options:**
 
@@ -348,7 +345,6 @@ that simply returns the string "spam"::
    def auth_spam(config):
        return "spam"
 
-
 **Exceptions:**
 
 Plugins can raise the following exceptions:
@@ -362,4 +358,3 @@ Plugins can raise the following exceptions:
 
 - ``PluginError``: Something else went wrong.  The program will be aborted
   immediately and an informative error will be displayed..
-
