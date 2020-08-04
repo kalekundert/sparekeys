@@ -446,7 +446,7 @@ def publish_mount(config, workspace):
                 rm(dest); mkdir(dest)
                 cp(workspace, dest)
         except Error as e:
-            error(f"unable to mount, skipping.", culprit=drive)
+            error(e, culprit=drive, codicil='Skipping.')
         else:
             display(f"Archive copied to '{drive}'.")
 
