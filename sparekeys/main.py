@@ -85,7 +85,8 @@ def main():
         except ConfigError as e:
             e.reraise(culprit=config_path)
         finally:
-            delete_archive(config, archive)
+            if 'archive' in locals():
+                delete_archive(config, archive)
 
     except KeyboardInterrupt:
         print()
@@ -205,8 +206,7 @@ def encrypt_archive(config, workspace, passcode):
 #!/bin/sh
 # Decrypts the archive.
 
-gpg -d -o archive.tgz archive.tgz.gpg
-tar xvf archive.tgz
+gpg -d -o - archive.tgz.gpg | tar xvf -
 ''')
     chmod(0o700, script, workspace / 'archive.tgz.gpg')
     narrate(f"Local archive '{workspace.name}' created.")
