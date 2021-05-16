@@ -20,18 +20,17 @@ requires = [
 ]
 classifiers = [
   'Programming Language :: Python :: 3',
-  'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
-  'Natural Language :: English',
-  'Topic :: Utilities',
+  'License :: OSI Approved :: MIT License',
 ]
 
 [tool.flit.metadata.requires-extra]
-tests = [
+test = [
   'pytest',
   'pytest-cov',
+  'parametrize_from_file',
   'coveralls',
 ]
-docs = [
+doc = [
   'sphinx',
   'sphinx_rtd_theme',
   'autoclasstoc',
@@ -61,6 +60,16 @@ avendesora = 'sparekeys:archive_avendesora'
 [tool.flit.entrypoints."sparekeys.publish"]
 scp = 'sparekeys:publish_scp'
 mount = 'sparekeys:publish_mount'
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --doctest-glob='*.rst'"
+doctest_optionflags = 'NORMALIZE_WHITESPACE'
+
+[tool.pccc]
+header_length = 72
+types = ["chore", "docs", "feat", "fix", "refactor", "style", "test"]
+ignore_generated_commits = true
+generated_commits = ['^Merge']
 
 [tool.semantic_release]
 version_variable = 'sparekeys/__init__.py:__version__'
