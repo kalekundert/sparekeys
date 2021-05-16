@@ -92,7 +92,8 @@ def main():
         except ConfigError as e:
             e.reraise(culprit=config_path)
         finally:
-            delete_archive(config, archive)
+            if 'archive' in locals():
+                delete_archive(config, archive)
 
     except KeyboardInterrupt:
         print()
@@ -214,8 +215,7 @@ def encrypt_archive(config, workspace, passcode):
 #!/bin/sh
 # Decrypts the archive.
 
-gpg -d -o archive.tgz archive.tgz.gpg
-tar xvf archive.tgz
+gpg -d -o - archive.tgz.gpg | tar xvf -
 ''')
     chmod(0o700, script, workspace / 'archive.tgz.gpg')
     narrate(f"Local archive '{workspace.name}' created.")
@@ -457,7 +457,7 @@ def publish_mount(config, workspace):
                 rm(dest); mkdir(dest)
                 cp(workspace, dest)
         except Error as e:
-            error(f"unable to mount, skipping.", culprit=drive)
+            error(e, culprit=drive, codicil='Skipping.')
         else:
             display(f"Archive copied to '{drive}'.")
 
