@@ -51,13 +51,20 @@ from socket import gethostname
 from arrow import now
 from gnupg import GPG
 
-PARAMS = dict(
-    date = now(),
-    user = getuser(),
-    host = gethostname(),
-)
+PARAMS = {
+    'date': now(),
+    'user': getuser(),
+    'host': gethostname(),
+}
 
 def main():
+    """
+    Construct, encrypt, and publish backup keys.  
+
+    As the primary entry point for the end user, this function is also 
+    responsible for integrating information from command-line arguments, 
+    configuration files, and `setuptools` plugins.
+    """
     set_shlib_prefs(use_inform=True, log_cmd=True)
     args = docopt.docopt(__doc__)
 
@@ -94,8 +101,10 @@ def main():
     except Error as e:
         if args['--verbose']: raise
         else: e.report()
+
     except OSError as e:
         fatal(os_error(e))
+
     terminate()
 
 
@@ -221,7 +230,9 @@ def publish_archive(config, workspace):
         )
 
     if not results:
-        warn(f"No automated publishing rules found.\nMake copies of the archive yourself:\n{workspace}")
+        error(f"No automated publishing rules found.")
+
+    return bool(results)
 
 def delete_archive(config, workspace):
     rm(workspace)
@@ -540,10 +551,8 @@ def allow_zero_or_more(config, key):
     values = config.get(key, [])
     return values if isinstance(values, list) else [values]
 
-
 class ConfigError(Error):
     pass
-
 
 class PluginError(Error):
     pass

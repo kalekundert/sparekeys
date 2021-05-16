@@ -1,0 +1,67 @@
+[build-system]
+requires = ["flit"]
+build-backend = "flit.buildapi"
+
+[tool.flit.metadata]
+module = "sparekeys"
+author = "Kale Kundert"
+author-email = "kale@thekunderts.net"
+home-page = 'https://github.com/kalekundert/sparekeys'
+description-file = 'README.rst'
+requires-python = "~=3.6"
+requires = [
+  'inform>=1.14',
+  'shlib>=1.0',
+  'setuptools',
+  'toml',
+  'appdirs',
+  'docopt',
+  'python-gnupg>=0.4.3',
+]
+classifiers = [
+  'Programming Language :: Python :: 3',
+  'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+  'Natural Language :: English',
+  'Topic :: Utilities',
+]
+
+[tool.flit.metadata.requires-extra]
+tests = [
+  'pytest',
+  'pytest-cov',
+  'coveralls',
+]
+docs = [
+  'sphinx',
+  'sphinx_rtd_theme',
+  'autoclasstoc',
+]
+
+[tool.flit.metadata.urls]
+'Documentation' = 'https://sparekeys.readthedocs.io/en/latest/'
+'Version Control' = 'https://github.com/kalekundert/sparekeys'
+'Bug Tracker' = 'https://github.com/kalekundert/sparekeys/issues'
+'Continuous Integration' = 'https://github.com/kalekundert/sparekeys/actions'
+'Test Coverage' = 'https://coveralls.io/github/kalekundert/sparekeys'
+
+[tool.flit.scripts]
+sparekeys = 'sparekeys:main'
+
+[tool.flit.entrypoints."sparekeys.auth"]
+getpass = 'sparekeys:auth_getpass'
+avendesora = 'sparekeys:auth_avendesora'
+
+[tool.flit.entrypoints."sparekeys.archive"]
+ssh = 'sparekeys:archive_ssh'
+gpg = 'sparekeys:archive_gpg'
+file = 'sparekeys:archive_file'
+emborg = 'sparekeys:archive_emborg'  # requires emborg>=1.2
+avendesora = 'sparekeys:archive_avendesora'
+
+[tool.flit.entrypoints."sparekeys.publish"]
+scp = 'sparekeys:publish_scp'
+mount = 'sparekeys:publish_mount'
+
+[tool.semantic_release]
+version_variable = 'sparekeys/__init__.py:__version__'
+build_command = 'python -m pip install flit && flit build'
