@@ -21,14 +21,11 @@ I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
 .PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest gettext
 
-<<<<<<< HEAD
-=======
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
->>>>>>> cookie/master
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
 	@echo "  html       to make standalone HTML files"
@@ -57,14 +54,6 @@ help:
 clean:
 	rm -rf $(BUILDDIR)/*
 
-<<<<<<< HEAD
-html:
-	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
-	@echo
-	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
-
-=======
->>>>>>> cookie/master
 dirhtml:
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) $(BUILDDIR)/dirhtml
 	@echo
@@ -96,28 +85,17 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-<<<<<<< HEAD
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/cookiecutterproject_name.qhcp"
-	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/cookiecutterproject_name.qhc"
-=======
 	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/Spare Keys.qhcp"
 	@echo "To view the help file:"
 	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/Spare Keys.qhc"
->>>>>>> cookie/master
 
 devhelp:
 	$(SPHINXBUILD) -b devhelp $(ALLSPHINXOPTS) $(BUILDDIR)/devhelp
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-<<<<<<< HEAD
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/cookiecutterproject_name"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/cookiecutterproject_name"
-=======
 	@echo "# mkdir -p $$HOME/.local/share/devhelp/Spare Keys"
 	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/Spare Keys"
->>>>>>> cookie/master
 	@echo "# devhelp"
 
 epub:
