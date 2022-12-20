@@ -32,7 +32,7 @@ keys, password vaults, etc.  The basic process goes like this:
    :alt: Documentation
    :target: https://sparekeys.readthedocs.io/en/latest/?badge=latest
 
-.. image:: https://img.shields.io/github/workflow/status/kalekundert/sparekeys/Test%20and%20release/master
+.. image:: https://img.shields.io/github/actions/workflow/status/kalekundert/sparekeys/test_and_release.yml?branch=master
    :alt: Test status
    :target: https://github.com/kalekundert/sparekeys/actions
 
